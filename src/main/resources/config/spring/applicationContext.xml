@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                            http://www.springframework.org/schema/beans/spring-beans-4.1.xsd
+                            http://www.springframework.org/schema/context
+                            http://www.springframework.org/schema/context/spring-context-4.1.xsd
+                            http://www.springframework.org/schema/tx
+                            http://www.springframework.org/schema/tx/spring-tx.xsd
+                            http://www.springframework.org/schema/aop
+                            http://www.springframework.org/schema/aop/spring-aop.xsd
+                            http://www.springframework.org/schema/mvc
+                            http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+
+    <!-- 自动扫描 -->
+    <context:component-scan base-package="com"/>
+    <context:annotation-config />
+    <mvc:annotation-driven />
+    <mvc:default-servlet-handler />
+    <aop:aspectj-autoproxy />
+
+    <!-- 加载jdbc.properties配置文件 -->
+    <bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <list>
+                <value>classpath*:config/jdbc.properties</value>
+            </list>
+        </property>
+    </bean>
+
+    <!--配置druid数据库连接池-->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
+        <property name="url" value="${jdbc.url}"/>
+        <property name="username" value="${jdbc.username}"/>
+        <property name="password" value="${jdbc.password}"/>
+        <property name="initialSize" value="1"/>
+        <property name="minIdle" value="1"/>
+        <property name="maxActive" value="20"/>
+        <property name="maxWait" value="60000"/>
+        <property name="timeBetweenEvictionRunsMillis" value="60000"/>
+        <property name="minEvictableIdleTimeMillis" value="300000"/>
+        <property name="validationQuery" value="SELECT 'x'"/>
+        <property name="testWhileIdle" value="true"/>
+        <property name="testOnBorrow" value="false"/>
+        <property name="testOnReturn" value="false"/>
+        <property name="poolPreparedStatements" value="true"/>
+        <property name="maxPoolPreparedStatementPerConnectionSize" value="20"/>
+        <property name="filters" value="stat,wall"/>
+        <property name="proxyFilters">
+            <list>
+                <ref bean="stat-filter"/>
+            </list>
+        </property>
+    </bean>
+    <bean id="stat-filter" class="com.alibaba.druid.filter.stat.StatFilter">
+        <property name="mergeSql" value="true"/>
+        <property name="slowSqlMillis" value="10000"/>
+        <property name="logSlowSql" value="true"/>
+    </bean>
+
+    <!-- druid Spring 关联监控-->
+    <bean id="druid-stat-interceptor" class="com.alibaba.druid.support.spring.stat.DruidStatInterceptor"/>
+    <bean class="org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator">
+        <property name="proxyTargetClass" value="true"/>
+        <property name="beanNames">
+            <list>
+                <value>com.*</value>
+            </list>
+        </property>
+        <property name="interceptorNames">
+            <list>
+                <value>druid-stat-interceptor</value>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="beetlConfig" class="org.beetl.ext.spring.BeetlGroupUtilConfiguration" init-method="init">
+        <property name="root" value="/config/beetlsql.properties" />
+    </bean>
+    <bean id="viewResolver" class="org.beetl.ext.spring.BeetlSpringViewResolver">
+        <property name="contentType" value="text/html;charset=UTF-8" />
+    </bean>
+
+    <bean id="jspViewResolver" class="org.springframework.web.servlet.view.InternalResourceViewResolver" />
+
+    <!--事务管理-->
+    <bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource" />
+    </bean>
+    <tx:annotation-driven transaction-manager="txManager" />
+
+    <!-- beetlsql spring整合配置 -->
+    <bean name="beetlSqlScannerConfigurer" class="org.beetl.sql.ext.spring4.BeetlSqlScannerConfigurer">
+        <property name="basePackage" value="com" />
+        <property name="daoSuffix" value="Dao" />
+        <property name="sqlManagerFactoryBeanName" value="sqlManagerFactoryBean" />
+    </bean>
+    <bean id="sqlManagerFactoryBean" class="org.beetl.sql.ext.spring4.SqlManagerFactoryBean">
+        <property name="cs">
+            <bean class="org.beetl.sql.ext.spring4.BeetlSqlDataSource">
+                <property name="masterSource" ref="dataSource"/>
+            </bean>
+        </property>
+        <property name="dbStyle">
+            <bean class="org.beetl.sql.core.db.MySqlStyle">
+            </bean>
+        </property>
+        <property name="sqlLoader">
+            <bean class="org.beetl.sql.core.ClasspathLoader">
+                <property name="sqlRoot" value="/beetlsql"/>
+            </bean>
+        </property>
+        <property name="nc">
+            <bean class="org.beetl.sql.core.UnderlinedNameConversion">
+            </bean>
+        </property>
+        <property name="interceptors">
+            <list>
+                <bean class="org.beetl.sql.ext.DebugInterceptor"/>
+            </list>
+        </property>
+    </bean>
+
+</beans>
