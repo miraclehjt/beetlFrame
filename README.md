@@ -1,5 +1,6 @@
 <p>这是一个有spring、springMVC、beetlsql、shiro搭建的maven项目</p>
 <p>各个的版本为：<p>
+	<p>JDK      --1.8</p>
 	<p>spring   --4.3.1</p>
 	<p>beetlsql --2.9.5</p>
 	<p>shiro    --1.2.3</p>
